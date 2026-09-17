@@ -1,0 +1,17 @@
+{
+  "name": "vighnaharta-path-of-beginnings",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --configLoader native",
+    "build": "tsc && vite build --configLoader native",
+    "preview": "vite preview",
+    "test": "node --experimental-strip-types --test tests/game.test.mjs",
+    "standalone": "npm run build && node scripts/standalone.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}

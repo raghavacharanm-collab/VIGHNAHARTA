@@ -1,0 +1,10 @@
+node_modules/
+.vite-cache/
+.vite-temp/
+.openai/.local/
+dist/
+PLAY-VIGHNAHARTA-FESTIVAL.html
+*.webm
+.DS_Store
+
+node_modules

@@ -1,0 +1,3 @@
+import {defineConfig} from 'vite';
+import {writeFile} from 'node:fs/promises';
+export default defineConfig({base:'./',cacheDir:'.vite-cache',server:{host:'127.0.0.1'},plugins:[{name:'local-demo-export',configureServer(server){server.middlewares.use('/__save-demo',async(req,res)=>{if(req.method!=='POST'||req.headers['content-type']!=='video/webm'){res.statusCode=405;res.end();return;} const chunks:Buffer[]=[];let size=0;try{for await(const chunk of req){size+=chunk.length;if(size>64*1024*1024)throw Error('Video too large');chunks.push(Buffer.from(chunk));}await writeFile('VIGHNAHARTA-Demo.webm',Buffer.concat(chunks));res.end('Saved');}catch{res.statusCode=400;res.end('Export failed');}});}}]});

@@ -1,0 +1,17 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {LEVELS,Run,START,END,scoreRun,pathLength,mirrorLevel,trialLevels,parseSave} from '../src/engine.ts';
+function simulate(l,path=l.hint,dt=1/60){const r=new Run(l,path);for(let i=0;i<4000&&r.phase==='moving';i++)r.step(dt);return r}
+for(const [i,l] of LEVELS.entries()){
+ test(`Chapter ${i+1}: all offerings, seals and gates complete within energy`,()=>{const r=simulate(l);assert.equal(r.phase,'won',r.reason);assert.ok(r.collected.every(Boolean));assert.ok(r.nodes.every(Boolean));assert.ok(r.switches.every(Boolean));assert.ok(pathLength(l.hint)<l.energy);assert.equal(scoreRun(r).stars,3)});
+ test(`Chapter ${i+1}: mirrored version and low frame rate stay playable`,()=>{const m=mirrorLevel(l),r=simulate(m,m.hint,.1);assert.equal(r.phase,'won',r.reason);assert.ok(r.collected.every(Boolean))});
+}
+test('Single long strokes cannot tunnel through stonework',()=>{assert.equal(simulate(LEVELS[0],[START,{x:80,y:180},{x:920,y:180},END]).phase,'failed')});
+test('Shrine requires every lotus seal',()=>{const l={...LEVELS[0],walls:[],offerings:[]};const r=simulate(l,[START,END]);assert.equal(r.phase,'failed');assert.match(r.reason,/seal/)});
+test('Gate remains closed without its switch',()=>{const r=simulate(LEVELS[1],[START,END]);assert.equal(r.phase,'failed');assert.equal(r.switches[0],false)});
+test('Portal jump is validated and costs no path energy',()=>{const l=LEVELS[2];const r=simulate(l);assert.equal(r.portalUsed,true);assert.equal(r.phase,'won');const forged=[START,{x:920,y:300,jump:true}];assert.equal(simulate(l,forged).phase,'failed')});
+test('Durva shield protects once and emits feedback',()=>{const r=simulate(LEVELS[3]);assert.equal(r.phase,'won');assert.equal(r.shieldUsed,1);assert.ok(r.events.some(e=>e.kind==='shield'));const l={...LEVELS[3],offerings:LEVELS[3].offerings.filter(o=>o.kind!=='durva')};assert.equal(simulate(l).phase,'failed')});
+test('Retry does not inherit items, gate state, or score',()=>{const r=simulate(LEVELS[1]);const fresh=new Run(LEVELS[1],LEVELS[1].hint);assert.ok(r.offeringScore>0);assert.equal(fresh.offeringScore,0);assert.ok(fresh.switches.every(v=>!v));assert.ok(fresh.collected.every(v=>!v))});
+test('Score rules cap hints, reward faster planning, and count combos',()=>{const r=simulate(LEVELS[0]);assert.equal(scoreRun(r,true).stars,2);assert.ok(scoreRun(r,false,0).score>scoreRun(r,false,50).score);assert.ok(r.maxCombo>1);assert.ok(r.offeringScore>=r.collected.length*200)});
+test('Out of bounds and excess energy fail safely',()=>{assert.equal(simulate(LEVELS[0],[START,{x:80,y:0},END]).phase,'failed');assert.equal(new Run({...LEVELS[0],energy:20},[START,END]).phase,'failed')});
+test('Daily routes are deterministic and all tested seeds are winnable',()=>{assert.deepEqual(trialLevels(20260914),trialLevels(20260914));for(let seed=20260910;seed<20260925;seed++)for(const l of trialLevels(seed))assert.equal(simulate(l).phase,'won')});
+test('Corrupted saves are safe and valid paths survive serialization',()=>{for(const v of ['null','bad','{"unlocked":999,"records":[null,{},false],"volume":-2}','{"records":[{"path":[null,{"x":"a","y":3}]}]}']){const s=parseSave(v);assert.ok(s.unlocked>=0&&s.unlocked<6);assert.ok(s.volume>=0&&s.volume<=1)}const s=parseSave(JSON.stringify({unlocked:5,records:[{score:3000,stars:3,path:LEVELS[0].hint}]}));assert.deepEqual(s.records[0].path,LEVELS[0].hint)});
